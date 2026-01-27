@@ -1,0 +1,70 @@
+name: Backend CI/CD
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'backend/**' ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+      - name: Test
+        working-directory: ./backend
+        run: go test ./... -v
+      - name: Vet
+        working-directory: ./backend
+        run: go vet ./...
+
+  build-and-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: starttech-backend
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Deploy to EC2 (Rolling Update)
+        run: |
+          chmod +x ./scripts/deploy-backend.sh
+          ./scripts/deploy-backend.sh
+        env:
+          ASG_NAME: ${{ secrets.ASG_NAME }}
+
+          AWS_REGION: us-east-1
+
+      - name: Deploy Backend Script
+  run: |
+    chmod +x ./scripts/deploy-backend.sh
+    ./scripts/deploy-backend.sh ${{ secrets.ASG_NAME }}
+
+      - name: Post-Deploy Health Check
+  run: |
+    chmod +x ./scripts/health-check.sh
+    # Assuming ALB DNS is stored in secrets or outputs
+    ./scripts/health-check.sh "http://${{ secrets.ALB_DNS_NAME }}"
+
