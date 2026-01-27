@@ -59,12 +59,12 @@ jobs:
 
       - name: Deploy Backend Script
         run: |
-    chmod +x ./scripts/deploy-backend.sh
-    ./scripts/deploy-backend.sh ${{ secrets.ASG_NAME }}
+          chmod +x ./scripts/deploy-backend.sh
+          ./scripts/deploy-backend.sh ${{ secrets.ASG_NAME }}
 
       - name: Post-Deploy Health Check
         run: |
-    chmod +x ./scripts/health-check.sh
+          chmod +x ./scripts/health-check.sh
     # Assuming ALB DNS is stored in secrets or outputs
-    ./scripts/health-check.sh "http://${{ secrets.ALB_DNS_NAME }}"
+          ./scripts/health-check.sh "http://${{ secrets.ALB_DNS_NAME }}"
 
