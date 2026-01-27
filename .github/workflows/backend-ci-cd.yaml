@@ -57,14 +57,8 @@ jobs:
 
           AWS_REGION: us-east-1
 
-      - name: Deploy Backend Script
-        run: |
-          chmod +x ./scripts/deploy-backend.sh
-          ./scripts/deploy-backend.sh ${{ secrets.ASG_NAME }}
-
       - name: Post-Deploy Health Check
         run: |
           chmod +x ./scripts/health-check.sh
-    # Assuming ALB DNS is stored in secrets or outputs
           ./scripts/health-check.sh "http://${{ secrets.ALB_DNS_NAME }}"
 
