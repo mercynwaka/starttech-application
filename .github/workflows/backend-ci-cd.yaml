@@ -22,7 +22,7 @@ jobs:
         working-directory: ./much-to-do/Server/MuchToDo
         run: go test ./... -v
       - name: Vet
-        working-directory: ./backend
+        working-directory: ./much-to-do/Server/MuchToDo
         run: go vet ./...
 
   build-and-deploy:
