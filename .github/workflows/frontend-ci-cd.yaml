@@ -40,9 +40,4 @@ jobs:
         run: |
           chmod +x ./scripts/deploy-frontend.sh
           ./scripts/deploy-frontend.sh ${{ secrets.AWS_S3_BUCKET }} ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
-
-      - name: Post-Deploy Health Check
-  run: |
-    chmod +x ./scripts/health-check.sh
-    # Assuming ALB DNS is stored in secrets or outputs
-    ./scripts/health-check.sh "http://${{ secrets.ALB_DNS_NAME }}"
+    
