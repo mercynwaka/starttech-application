@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16'
+          node-version: '20'
  
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -43,5 +43,5 @@ jobs:
       - name: Deploy Frontend Script
         run: |
           chmod +x ./scripts/deploy-frontend.sh
-          ./scripts/deploy-frontend.sh ${{ secrets.AWS_S3_BUCKET }} ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+          ./scripts/deploy-frontend.sh ${{ secrets.TF_VAR_FRONTEND_BUCKET_NAME }} ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
     

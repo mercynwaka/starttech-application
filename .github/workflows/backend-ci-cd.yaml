@@ -2,22 +2,20 @@ name: Backend CI/CD
 on:
   push:
     branches: [ main ]
-    paths: 
-      - 'backend/**'
+    paths:
       - 'much-to-do/**'
-      - '.github/workflows/backend-ci-cd.yml'
-  workflow_dispatch:     
-  
+      - '.github/workflows/backend.yaml' # Ensure this matches the actual filename
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
-          go-version: 1.24
+          go-version: '1.24' 
       - name: Test
         working-directory: ./much-to-do/Server/MuchToDo
         run: go test ./... -v
@@ -29,10 +27,10 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      
+      - uses: actions/checkout@v3
+
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -44,26 +42,27 @@ jobs:
 
       - name: Build, tag, and push image to ECR
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: starttech-backend
+          
+          ECR_URL: ${{ secrets.ECR_REPOSITORY_URL }} 
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./backend
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          # Point the build context to your Go server folder
+          docker build -t $ECR_URL:$IMAGE_TAG ./much-to-do/Server/MuchToDo
+          docker push $ECR_URL:$IMAGE_TAG
+
+          docker tag $ECR_URL:$IMAGE_TAG $ECR_URL:latest
+          docker push $ECR_URL:latest
 
       - name: Deploy to EC2 (Rolling Update)
+        # Note: Ensure you have these scripts in your application repo!
         run: |
           chmod +x ./scripts/deploy-backend.sh
           ./scripts/deploy-backend.sh
         env:
           ASG_NAME: ${{ secrets.ASG_NAME }}
-
           AWS_REGION: us-east-1
 
       - name: Post-Deploy Health Check
         run: |
           chmod +x ./scripts/health-check.sh
           ./scripts/health-check.sh "http://${{ secrets.ALB_DNS_NAME }}"
-
