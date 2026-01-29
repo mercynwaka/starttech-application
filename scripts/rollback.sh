@@ -1,32 +1,45 @@
-# Backend Rollback Script
-# Usage: ./rollback.sh <asg-name> <ecr-repo-name> <previous-working-tag>
+#!/bin/bash
+set -e
 
-ASG_NAME=$1
+# Usage: ./scripts/rollback.sh <asg-name> <ecr-repo-name> <previous-working-tag>
+
+# 1. Read Arguments
+export ASG_NAME=$1
 ECR_REPO=$2
 PREVIOUS_TAG=$3
-REGION="us-east-1"
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-REGISTRY="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"
+export AWS_REGION="us-east-1" # Ensure deploy script sees this too
 
 if [ -z "$PREVIOUS_TAG" ]; then
     echo "Usage: $0 <asg-name> <ecr-repo-name> <previous-working-tag>"
     exit 1
 fi
 
-echo "--- Initiating Rollback to tag: $PREVIOUS_TAG ---"
+echo "--- Initiating Rollback for $ECR_REPO to tag: $PREVIOUS_TAG ---"
 
-# 1. Login to Docker/ECR
-echo "Step 1: Logging into ECR..."
-aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin "$REGISTRY"
+# 2. Retag in ECR (The Fast Way - No Docker Pull needed!)
+echo "Step 1: Retagging '$PREVIOUS_TAG' as 'latest' via AWS CLI..."
 
-# 2. Retag the previous image as 'latest'
-echo "Step 2: Pulling previous image $PREVIOUS_TAG and retagging as latest..."
-docker pull "$REGISTRY/$ECR_REPO:$PREVIOUS_TAG"
-docker tag "$REGISTRY/$ECR_REPO:$PREVIOUS_TAG" "$REGISTRY/$ECR_REPO:latest"
-docker push "$REGISTRY/$ECR_REPO:latest"
+# Get the image manifest of the working tag
+MANIFEST=$(aws ecr batch-get-image --repository-name $ECR_REPO \
+    --image-ids imageTag=$PREVIOUS_TAG \
+    --region $AWS_REGION \
+    --query 'images[].imageManifest' \
+    --output text)
 
-echo "Step 3: Triggering ASG Instance Refresh to pick up rollback image..."
-# We call the deploy script again, as it handles the refresh logic
-./deploy-backend.sh "$ASG_NAME" "$REGION"
+if [ -z "$MANIFEST" ]; then
+    echo "Error: Could not find image with tag $PREVIOUS_TAG in repo $ECR_REPO"
+    exit 1
+fi
 
-echo "Rollback sequence initiated."
+
+aws ecr batch-delete-image --repository-name $ECR_REPO --image-ids imageTag=latest --region $AWS_REGION || true
+aws ecr put-image --repository-name $ECR_REPO --image-tag latest --image-manifest "$MANIFEST" --region $AWS_REGION
+
+echo "Image retagged successfully."
+
+# 3. Trigger Instance Refresh
+echo "Step 2: Triggering ASG Instance Refresh..."
+# We export ASG_NAME above so the script picks it up automatically
+./scripts/deploy-backend.sh
+
+echo "Rollback initiated. Monitor the ASG console for progress."
