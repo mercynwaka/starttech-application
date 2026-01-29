@@ -57,7 +57,8 @@ jobs:
         # Note: Ensure you have these scripts in your application repo!
         run: |
           chmod +x ./scripts/deploy-backend.sh
-          ./scripts/deploy-backend.sh
+          
+          ./scripts/deploy-backend.sh "$ASG_NAME" "$AWS_REGION"
         env:
           ASG_NAME: ${{ secrets.ASG_NAME }}
           AWS_REGION: us-east-1
