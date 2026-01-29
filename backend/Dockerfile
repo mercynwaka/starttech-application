@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY much-to-do/Server/MuchToDo/go.mod much-to-do/Server/MuchToDo/go.sum ./
 
-COPY much-to-do/Server/MuchToDo/ .
+COPY much-to-do/Server/MuchToDo/ ./
 
 RUN go mod download
 
