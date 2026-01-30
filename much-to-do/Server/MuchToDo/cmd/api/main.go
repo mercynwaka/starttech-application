@@ -35,9 +35,9 @@ import (
 	"github.com/Innocent9712/much-to-do/Server/MuchToDo/internal/config"
 	"github.com/Innocent9712/much-to-do/Server/MuchToDo/internal/database"
 	"github.com/Innocent9712/much-to-do/Server/MuchToDo/internal/handlers"
+	"github.com/Innocent9712/much-to-do/Server/MuchToDo/internal/logger"
 	"github.com/Innocent9712/much-to-do/Server/MuchToDo/internal/middleware"
 	"github.com/Innocent9712/much-to-do/Server/MuchToDo/internal/routes"
-	"github.com/Innocent9712/much-to-do/Server/MuchToDo/internal/logger"
 
 	// Swagger imports
 	_ "github.com/Innocent9712/much-to-do/Server/MuchToDo/docs" // This is required for swag to find your docs
@@ -151,7 +151,6 @@ func preloadUsernamesIntoCache(db *mongo.Client, cacheSvc cache.Cache, cfg confi
 	}
 }
 
-
 // setupRouter initializes the Gin router and sets up the routes.
 func setupRouter(db *mongo.Client, cfg config.Config, tokenSvc *auth.TokenService, cacheSvc cache.Cache) *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
@@ -166,8 +165,13 @@ func setupRouter(db *mongo.Client, cfg config.Config, tokenSvc *auth.TokenServic
 	userHandler := handlers.NewUserHandler(userCollection, todoCollection, tokenSvc, cacheSvc, db, cfg)
 	healthHandler := handlers.NewHealthHandler(db, cacheSvc, cfg.EnableCache)
 
-	// Auth Middleware
-	authMiddleware := middleware.AuthMiddleware(tokenSvc)
+	// Middleware
+	corsMiddleware := middleware.CORSMiddleware(cfg.AllowedOrigins)
+	// corsMiddleware := middleware.CORSMiddleware2()
+	authMiddleware := middleware.AuthMiddleware(tokenSvc, cfg)
+
+	// Apply CORS middleware to the router
+	router.Use(corsMiddleware)
 
 	// Register all routes
 	routes.RegisterRoutes(router, userHandler, todoHandler, healthHandler, authMiddleware)
@@ -179,6 +183,12 @@ func setupRouter(db *mongo.Client, cfg config.Config, tokenSvc *auth.TokenServic
 
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Welcome to MuchToDo API"})
+	})
+
+	// Test route to debug /todos issue
+	router.GET("/test-todos", func(c *gin.Context) {
+		println("=== TEST TODOS ROUTE HIT ===")
+		c.JSON(http.StatusOK, gin.H{"message": "Test todos route works!"})
 	})
 
 	// Handle 404

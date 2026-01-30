@@ -3,7 +3,7 @@ on:
   push:
     branches: [ main ]
     paths: 
-      - 'frontend/**'
+      - './much-to-do/Client'
       - '.github/workflows/frontend-ci-cd.yml'
 
   workflow_dispatch:
@@ -27,19 +27,19 @@ jobs:
           aws-region: us-east-1      
 
       - name: Install Dependencies
-        working-directory: ./frontend
+        working-directory: ./much-to-do/Client
         run: npm ci
         
       - name: Run Security Audit
-        working-directory: ./frontend
+        working-directory: ./much-to-do/Client
         # Adding '|| true' allows the pipeline to continue even if vulnerabilities are found
         run: npm audit --audit-level=high || true 
 
       - name: Build
-        working-directory: ./frontend
+        working-directory: ./much-to-do/Client
         run: npm run build
         env:
-          REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
+          VITE_API_URL: ${{ secrets.REACT_APP_API_URL }}
 
       - name: Deploy Frontend Script
         run: |
