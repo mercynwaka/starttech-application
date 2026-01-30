@@ -23,6 +23,8 @@ func RegisterRoutes(
 ) {
 	// Public routes
 	router.GET("/health", healthHandler.CheckHealth)
+        // Fix for AWS Load Balancer Health Check
+	router.GET("/", healthHandler.CheckHealth)
 
 	// Swagger documentation route
 	router.GET("/swagger/*any", func(c *gin.Context) {
