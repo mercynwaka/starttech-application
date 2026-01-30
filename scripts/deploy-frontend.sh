@@ -10,7 +10,7 @@ BUCKET_NAME=$1
 DISTRIBUTION_ID=$2
 
 # Since GitHub Actions runs from the ROOT, we point directly to the folder
-BUILD_DIR="./frontend/build"
+BUILD_DIR="./much-to-do/Client/dist"
 
 # Check for arguments
 if [ -z "$BUCKET_NAME" ] || [ -z "$DISTRIBUTION_ID" ]; then
